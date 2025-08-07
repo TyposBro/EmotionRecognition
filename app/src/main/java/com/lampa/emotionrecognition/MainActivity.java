@@ -26,11 +26,12 @@ import android.widget.Toast;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.ml.vision.FirebaseVision;
-import com.google.firebase.ml.vision.common.FirebaseVisionImage;
-import com.google.firebase.ml.vision.face.FirebaseVisionFace;
-import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetector;
-import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions;
+// ML KIT IMPORTS (CHANGED)
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.face.Face;
+import com.google.mlkit.vision.face.FaceDetection;
+import com.google.mlkit.vision.face.FaceDetector;
+import com.google.mlkit.vision.face.FaceDetectorOptions;
 import com.lampa.emotionrecognition.classifiers.TFLiteImageClassifier;
 import com.lampa.emotionrecognition.utils.ImageUtils;
 import com.lampa.emotionrecognition.utils.SortingHelper;
@@ -44,6 +45,8 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -111,8 +114,10 @@ public class MainActivity extends AppCompatActivity {
         mClassifier.close();
 
         File picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        for (File tempFile : picturesDir.listFiles()) {
-            tempFile.delete();
+        if (picturesDir != null && picturesDir.listFiles() != null) {
+            for (File tempFile : picturesDir.listFiles()) {
+                tempFile.delete();
+            }
         }
     }
 
@@ -150,6 +155,10 @@ public class MainActivity extends AppCompatActivity {
 
     // Function to handle successful new image acquisition
     private void processImageRequestResult(Uri resultImageUri) {
+        if (resultImageUri == null) {
+            Toast.makeText(this, "Failed to get image.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         Bitmap scaledResultImageBitmap = getScaledImageBitmap(resultImageUri);
 
         mImageView.setImageBitmap(scaledResultImageBitmap);
@@ -164,9 +173,8 @@ public class MainActivity extends AppCompatActivity {
 
     // Function to create an intent to take an image from the gallery
     private void pickFromGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK);
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
-
         startActivityForResult(intent, GALLERY_REQUEST_CODE);
     }
 
@@ -180,17 +188,17 @@ public class MainActivity extends AppCompatActivity {
                 photoFile = createImageFile();
             } catch (IOException e) {
                 e.printStackTrace();
+                Toast.makeText(this, "Error creating image file.", Toast.LENGTH_SHORT).show();
+                return;
             }
 
-            if (photoFile != null) {
-                mCurrentPhotoUri = FileProvider.getUriForFile(
-                        this,
-                        BuildConfig.APPLICATION_ID + ".fileprovider",
-                        photoFile);
+            mCurrentPhotoUri = FileProvider.getUriForFile(
+                    this,
+                    "com.lampa.emotionrecognition.fileprovider",
+                    photoFile);
 
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, mCurrentPhotoUri);
-                startActivityForResult(intent, TAKE_PHOTO_REQUEST_CODE);
-            }
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, mCurrentPhotoUri);
+            startActivityForResult(intent, TAKE_PHOTO_REQUEST_CODE);
         }
     }
 
@@ -240,28 +248,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void detectFaces(Bitmap imageBitmap) {
-        FirebaseVisionFaceDetectorOptions faceDetectorOptions =
-                new FirebaseVisionFaceDetectorOptions.Builder()
-                        .setPerformanceMode(FirebaseVisionFaceDetectorOptions.ACCURATE)
-                        .setLandmarkMode(FirebaseVisionFaceDetectorOptions.NO_LANDMARKS)
-                        .setClassificationMode(FirebaseVisionFaceDetectorOptions.NO_CLASSIFICATIONS)
+        // --- ML KIT CODE --- (CHANGED)
+        // 1. Create FaceDetectorOptions
+        FaceDetectorOptions faceDetectorOptions =
+                new FaceDetectorOptions.Builder()
+                        .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                        .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+                        .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
                         .setMinFaceSize(0.1f)
                         .build();
 
-        FirebaseVisionFaceDetector faceDetector = FirebaseVision.getInstance()
-                .getVisionFaceDetector(faceDetectorOptions);
+        // 2. Get a FaceDetector client
+        FaceDetector faceDetector = FaceDetection.getClient(faceDetectorOptions);
 
+        // 3. Create an InputImage from the Bitmap
+        final InputImage inputImage = InputImage.fromBitmap(imageBitmap, 0);
 
-        final FirebaseVisionImage firebaseImage = FirebaseVisionImage.fromBitmap(imageBitmap);
-
-        Task<List<FirebaseVisionFace>> result =
-                faceDetector.detectInImage(firebaseImage)
+        // 4. Process the image
+        Task<List<Face>> result =
+                faceDetector.process(inputImage)
                         .addOnSuccessListener(
-                                new OnSuccessListener<List<FirebaseVisionFace>>() {
+                                new OnSuccessListener<List<Face>>() {
                                     // When the search for faces was successfully completed
                                     @Override
-                                    public void onSuccess(List<FirebaseVisionFace> faces) {
-                                        Bitmap imageBitmap = firebaseImage.getBitmap();
+                                    public void onSuccess(List<Face> faces) {
+                                        Bitmap imageBitmap = inputImage.getBitmapInternal();
                                         // Temporary Bitmap for drawing
                                         Bitmap tmpBitmap = Bitmap.createBitmap(
                                                 imageBitmap.getWidth(),
@@ -289,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
                                             // faceId ~ face text number
                                             int faceId = 1;
 
-                                            for (FirebaseVisionFace face : faces) {
+                                            for (Face face : faces) { // Use 'Face' instead of 'FirebaseVisionFace'
                                                 Rect faceRect = getInnerRect(
                                                         face.getBoundingBox(),
                                                         imageBitmap.getWidth(),
@@ -334,7 +345,7 @@ public class MainActivity extends AppCompatActivity {
                                             if (faces.size() == 1) {
                                                 mClassificationExpandableListView.expandGroup(0);
                                             }
-                                        // If no faces are found
+                                            // If no faces are found
                                         } else {
                                             Toast.makeText(
                                                     MainActivity.this,
@@ -426,4 +437,3 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
-
