@@ -54,7 +54,7 @@
                 android:id="@+id/take_photo_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="0.5"
+                android:layout_weight="0.33"
                 android:text="@string/take_photo_button"
                 android:textSize="10sp" />
 
@@ -62,9 +62,17 @@
                 android:id="@+id/pick_image_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="0.5"
+                android:layout_weight="0.33"
                 android:text="@string/pick_image_button"
                 android:textSize="10sp" />
+
+            <Button
+                android:id="@+id/live_emotion_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.34"
+                android:text="@string/live_emotion_button"
+                android:textSize="9sp" />
         </LinearLayout>
 
         <View

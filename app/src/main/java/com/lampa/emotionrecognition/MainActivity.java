@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView mImageView;
     private Button mPickImageButton;
     private Button mTakePhotoButton;
+    private Button mLiveEmotionButton;
     private ExpandableListView mClassificationExpandableListView;
     private Uri mCurrentPhotoUri;
     private Map<String, List<Pair<String, String>>> mClassificationResult;
@@ -97,6 +98,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 checkCameraPermissionAndTakePhoto();
+            }
+        });
+
+        mLiveEmotionButton = findViewById(R.id.live_emotion_button);
+        mLiveEmotionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startLiveEmotionDetection();
             }
         });
 
@@ -377,10 +386,17 @@ public class MainActivity extends AppCompatActivity {
             mClassificationProgressBar.setVisibility(ProgressBar.VISIBLE);
             mTakePhotoButton.setEnabled(false);
             mPickImageButton.setEnabled(false);
+            mLiveEmotionButton.setEnabled(false);
         } else {
             mClassificationProgressBar.setVisibility(ProgressBar.INVISIBLE);
             mTakePhotoButton.setEnabled(true);
             mPickImageButton.setEnabled(true);
+            mLiveEmotionButton.setEnabled(true);
         }
+    }
+
+    private void startLiveEmotionDetection() {
+        Intent intent = new Intent(this, LiveEmotionActivity.class);
+        startActivity(intent);
     }
 }

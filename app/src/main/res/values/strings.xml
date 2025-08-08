@@ -5,4 +5,12 @@
     <string name="classification_delimiter_text_view">-</string>
     <string name="face">Face</string>
     <string name="faceless">No face detected</string>
+
+    <!-- Live Emotion Detection Strings -->
+    <string name="live_emotion_button">Live Emotion Detection</string>
+    <string name="back">Back</string>
+    <string name="switch_camera">Switch Camera</string>
+    <string name="detecting_emotions">Detecting emotions...</string>
+    <string name="no_face_detected">No face detected</string>
+    <string name="camera_permission_required">Camera permission is required for live emotion detection</string>
 </resources>
