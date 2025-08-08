@@ -58,11 +58,8 @@ fun LiveEmotionScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var hasCameraPermission by remember { mutableStateOf(false) }
 
-    // State for the results from the analyzer
     var faceResults by remember { mutableStateOf<List<FaceResult>>(emptyList()) }
     var analysisImageSize by remember { mutableStateOf(Size(0, 0)) }
-
-    // State for the camera lens
     var lensFacing by remember { mutableStateOf(CameraSelector.LENS_FACING_FRONT) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -93,7 +90,6 @@ fun LiveEmotionScreen(onBack: () -> Unit) {
             Text("Camera permission is required.", modifier = Modifier.align(Alignment.Center))
         }
 
-        // Bottom control panel
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -181,15 +177,13 @@ private fun bindCameraUseCases(
     try {
         cameraProvider.unbindAll()
         val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
-
-        // Ensure the PreviewView is attached to the window
         val preview = Preview.Builder()
-            .setTargetResolution(Size(640, 480)) // Use a standard resolution
+            .setTargetResolution(Size(640, 480))
             .build()
             .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
         val imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetResolution(Size(640, 480)) // Match the preview resolution
+            .setTargetResolution(Size(640, 480))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
@@ -207,6 +201,7 @@ private class EmotionAnalyzer(
     private val emotionClassifier: TFLiteImageClassifier,
     private val onResults: (List<FaceResult>, Size) -> Unit
 ) : ImageAnalysis.Analyzer {
+
     private var isProcessing = false
 
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
@@ -217,7 +212,6 @@ private class EmotionAnalyzer(
         isProcessing = true
 
         val mediaImage = imageProxy.image
-        // IMPORTANT: The analysis image is in landscape orientation, so width > height.
         val analysisSize = Size(imageProxy.width, imageProxy.height)
 
         if (mediaImage != null) {
@@ -225,12 +219,16 @@ private class EmotionAnalyzer(
             faceDetector.process(inputImage)
                 .addOnSuccessListener { faces ->
                     val results = faces.mapNotNull { face ->
-                        extractFaceBitmap(inputImage, face.boundingBox)?.let { faceBitmap ->
+                        // --- MODIFICATION IS HERE ---
+                        // Scale the original bounding box to make it larger
+                        val scaledBox = scaleBoundingBox(face.boundingBox, 1.4f)
+
+                        extractFaceBitmap(inputImage, scaledBox)?.let { faceBitmap ->
                             val emotions = emotionClassifier.classify(faceBitmap, true)
                             val dominantEmotion = getDominantEmotion(emotions)
                             val confidence = emotions.getOrDefault(dominantEmotion, 0f) * 100
                             FaceResult(
-                                boundingBox = face.boundingBox,
+                                boundingBox = scaledBox, // Use the new, larger box
                                 emotion = "$dominantEmotion (${"%.1f".format(confidence)}%)"
                             )
                         }
@@ -243,7 +241,7 @@ private class EmotionAnalyzer(
                     imageProxy.close()
                 }
         } else {
-            imageProxy.close() // Close if mediaImage is null
+            imageProxy.close()
         }
     }
 }
@@ -263,42 +261,23 @@ fun FaceOverlay(
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        // Guard against division by zero
         if (sourceSize.width == 0 || sourceSize.height == 0) return@Canvas
 
-        // This is the size of the Composable Canvas. It's in portrait.
         val canvasWidth = size.width
         val canvasHeight = size.height
-
-        // The camera analysis provides a landscape image (width > height).
-        // We need to map coordinates from this landscape source to the portrait canvas.
-
-        // How much we need to scale the X and Y dimensions from the source to the canvas.
         val widthScaleFactor = canvasWidth / sourceSize.height.toFloat()
         val heightScaleFactor = canvasHeight / sourceSize.width.toFloat()
 
         for (face in faces) {
             val box = face.boundingBox
-
-            // Transform the coordinates from the landscape source to the portrait canvas.
             val left = box.top * widthScaleFactor
             val top = box.left * heightScaleFactor
             val right = box.bottom * widthScaleFactor
             val bottom = box.right * heightScaleFactor
 
-            // For the front camera, the image is mirrored. We need to flip the X-coordinates.
-            val mirroredLeft = if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
-                canvasWidth - right
-            } else {
-                left
-            }
-            val mirroredRight = if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
-                canvasWidth - left
-            } else {
-                right
-            }
+            val mirroredLeft = if (lensFacing == CameraSelector.LENS_FACING_FRONT) canvasWidth - right else left
+            val mirroredRight = if (lensFacing == CameraSelector.LENS_FACING_FRONT) canvasWidth - left else right
 
-            // Draw the bounding box. Use min/max to handle the mirrored case correctly.
             drawRect(
                 color = Color.Green,
                 topLeft = Offset(min(mirroredLeft, mirroredRight), top),
@@ -306,26 +285,43 @@ fun FaceOverlay(
                 style = Stroke(width = 2.dp.toPx())
             )
 
-            // Draw the emotion text above the box
             drawContext.canvas.nativeCanvas.drawText(
                 face.emotion,
-                (mirroredLeft + mirroredRight) / 2, // Center the text horizontally
-                top - 15,                         // Position text slightly above the box
+                (mirroredLeft + mirroredRight) / 2,
+                top - 15,
                 textPaint
             )
         }
     }
 }
 
+// --- NEW HELPER FUNCTION TO SCALE THE BOUNDING BOX ---
+/**
+ * Increases the size of a Rect by a given factor, expanding from the center.
+ * @param rect The original bounding box.
+ * @param scale The factor to scale by (e.g., 1.4f for a 40% increase).
+ * @return A new, larger Rect.
+ */
+private fun scaleBoundingBox(rect: Rect, scale: Float): Rect {
+    val centerX = rect.centerX()
+    val centerY = rect.centerY()
+    val newWidth = rect.width() * scale
+    val newHeight = rect.height() * scale
 
-// --- Helper Functions (No changes needed here from last time) ---
+    val newLeft = (centerX - newWidth / 2).toInt()
+    val newTop = (centerY - newHeight / 2).toInt()
+    val newRight = (centerX + newWidth / 2).toInt()
+    val newBottom = (centerY + newHeight / 2).toInt()
+
+    return Rect(newLeft, newTop, newRight, newBottom)
+}
+
+// --- Other Helper Functions (No changes needed here) ---
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 fun extractFaceBitmap(inputImage: InputImage, boundingBox: Rect): android.graphics.Bitmap? {
     val mediaImage = inputImage.mediaImage ?: return null
     val rotationDegrees = inputImage.rotationDegrees
 
-    // This conversion is a fallback. For better performance, a direct YUV_420_888 to ARGB
-    // converter would be ideal, but this is more universally compatible.
     val yBuffer = mediaImage.planes[0].buffer.apply { rewind() }
     val uBuffer = mediaImage.planes[1].buffer.apply { rewind() }
     val vBuffer = mediaImage.planes[2].buffer.apply { rewind() }
@@ -349,6 +345,7 @@ fun extractFaceBitmap(inputImage: InputImage, boundingBox: Rect): android.graphi
         originalBitmap
     }
 
+    // IMPORTANT: Clamp the scaled box to the bitmap dimensions to avoid a crash when cropping.
     val left = max(0, boundingBox.left)
     val top = max(0, boundingBox.top)
     val width = min(rotatedBitmap.width - left, boundingBox.width())
