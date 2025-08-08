@@ -65,6 +65,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+implementation("androidx.navigation:navigation-compose:2.9.3")
 
     // CameraX Dependencies
     implementation("androidx.camera:camera-core:1.4.2")
@@ -80,6 +81,7 @@ dependencies {
     // But if you had one, it would look like this:
      implementation("org.tensorflow:tensorflow-lite-support:0.5.0")
      implementation("org.tensorflow:tensorflow-lite-gpu:2.17.0")
+
 
     // Testing
     testImplementation("junit:junit:4.13.2")

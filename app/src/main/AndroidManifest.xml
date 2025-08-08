@@ -2,14 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.lampa.emotionrecognition">
 
-    <!-- Permissions -->
-    <!-- READ_EXTERNAL_STORAGE is only needed for devices below Android 13 (API 33) for gallery access -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- CAMERA permission is essential for the live detection feature -->
     <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- Declare camera feature requirements -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="true" />
@@ -22,7 +17,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <!-- FileProvider for taking photos -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -33,22 +27,18 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Main Activity (Legacy XML-based) -->
+        <!-- This is now your ONLY activity -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- New Jetpack Compose Activity for Live Emotion Detection -->
-        <activity
-            android:name=".LiveEmotionComposeActivity"
-            android:label="Live Emotion Detection"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" /> <!-- A Compose-compatible theme -->
+        <!-- REMOVED the declaration for LiveEmotionComposeActivity -->
 
     </application>
-
 </manifest>
