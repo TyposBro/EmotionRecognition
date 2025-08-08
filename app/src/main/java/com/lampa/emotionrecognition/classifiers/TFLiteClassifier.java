@@ -2,12 +2,11 @@ package com.lampa.emotionrecognition.classifiers;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
-import android.util.Log; // Make sure this import is present
+import android.util.Log;
 
 import com.lampa.emotionrecognition.classifiers.behaviors.ClassifyBehavior;
 
 import org.tensorflow.lite.Interpreter;
-import org.tensorflow.lite.gpu.GpuDelegate;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,29 +28,19 @@ public abstract class TFLiteClassifier {
 
     protected ClassifyBehavior classifyBehavior;
 
-    // THIS IS THE CORRECTED CONSTRUCTOR
     public TFLiteClassifier(AssetManager assetManager, String modelFileName, String[] labels) {
         mAssetManager = assetManager;
         mTFLiteInterpreterOptions = new Interpreter.Options();
 
-        // --- START: MODERN GPU DELEGATE INITIALIZATION ---
-        try {
-            // Create a new options instance for the GpuDelegate.
-            GpuDelegate.Options delegateOptions = new GpuDelegate.Options();
-            GpuDelegate delegate = new GpuDelegate();
-            mTFLiteInterpreterOptions.addDelegate(delegate);
-            Log.d("TFLiteClassifier", "GPU Delegate created successfully.");
-        } catch (Exception e) {
-            // If the GPU delegate fails, log the error and fall back to using the CPU.
-            // This prevents the app from crashing on unsupported devices.
-            Log.e("TFLiteClassifier", "Failed to create GPU delegate. Using CPU instead.", e);
-            mTFLiteInterpreterOptions.setNumThreads(4); // Optional: improve CPU performance
-        }
-        // --- END: MODERN GPU DELEGATE INITIALIZATION ---
+        // Use CPU with multiple threads for better performance
+        // Avoiding GPU delegate due to compatibility issues
+        mTFLiteInterpreterOptions.setNumThreads(4);
+        Log.d("TFLiteClassifier", "Using CPU with 4 threads for TensorFlow Lite inference.");
 
-        // Now, initialize the interpreter with the options (which may or may not have the GPU delegate)
+        // Initialize the interpreter with the options
         try {
             mInterpreter = new Interpreter(loadModel(modelFileName), mTFLiteInterpreterOptions);
+            Log.d("TFLiteClassifier", "Interpreter initialized successfully with CPU.");
         } catch (Exception ex) {
             Log.e("TFLiteClassifier", "Failed to initialize interpreter.", ex);
             ex.printStackTrace();
@@ -76,6 +65,7 @@ public abstract class TFLiteClassifier {
     public void close() {
         if (mInterpreter != null) {
             mInterpreter.close();
+            mInterpreter = null;
         }
     }
 
@@ -88,6 +78,6 @@ public abstract class TFLiteClassifier {
     }
 
     public void setLabels(List<String> labels) {
-        mLabels = mLabels;
+        mLabels = labels;
     }
 }
