@@ -44,13 +44,17 @@
 
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="fullSensor"
             android:exported="true"> <!-- ADDED: Required for apps targeting Android 12+ -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".LiveEmotionActivity"
+            android:screenOrientation="fullSensor" />
 
         <!-- REMOVED: This meta-data is obsolete and was for the old Firebase ML Vision library. -->
         <!--

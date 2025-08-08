@@ -48,6 +48,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -101,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Initialize and set the listener for the new live emotion detection button
         mLiveEmotionButton = findViewById(R.id.live_emotion_button);
         mLiveEmotionButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -118,9 +120,10 @@ public class MainActivity extends AppCompatActivity {
 
         mClassifier.close();
 
+        // Clean up temporary image files
         File picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         if (picturesDir != null && picturesDir.listFiles() != null) {
-            for (File tempFile : picturesDir.listFiles()) {
+            for (File tempFile : Objects.requireNonNull(picturesDir.listFiles())) {
                 tempFile.delete();
             }
         }
@@ -282,7 +285,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess(List<Face> faces) {
                         Bitmap imageBitmap = inputImage.getBitmapInternal();
-                        Bitmap tmpBitmap = Bitmap.createBitmap(imageBitmap.getWidth(), imageBitmap.getHeight(), imageBitmap.getConfig());
+                        assert imageBitmap != null;
+                        Bitmap tmpBitmap = Bitmap.createBitmap(imageBitmap.getWidth(), imageBitmap.getHeight(), Objects.requireNonNull(imageBitmap.getConfig()));
 
                         Canvas tmpCanvas = new Canvas(tmpBitmap);
                         tmpCanvas.drawBitmap(imageBitmap, 0, 0, null);
@@ -395,6 +399,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Creates an intent to start the LiveEmotionActivity.
+     */
     private void startLiveEmotionDetection() {
         Intent intent = new Intent(this, LiveEmotionActivity.class);
         startActivity(intent);

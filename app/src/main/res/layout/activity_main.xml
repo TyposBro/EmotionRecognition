@@ -66,6 +66,7 @@
                 android:text="@string/pick_image_button"
                 android:textSize="10sp" />
 
+            <!-- ADDED THIS BUTTON -->
             <Button
                 android:id="@+id/live_emotion_button"
                 android:layout_width="0dp"
