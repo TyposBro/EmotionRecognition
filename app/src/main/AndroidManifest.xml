@@ -36,7 +36,6 @@
         <!-- Main Activity (Legacy XML-based) -->
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="fullSensor"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -48,7 +47,6 @@
         <activity
             android:name=".LiveEmotionComposeActivity"
             android:label="Live Emotion Detection"
-            android:screenOrientation="fullSensor"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" /> <!-- A Compose-compatible theme -->
 
     </application>
