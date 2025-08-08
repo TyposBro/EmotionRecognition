@@ -2,6 +2,7 @@ package com.lampa.emotionrecognition.classifiers;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
+import android.util.Log; // Make sure this import is present
 
 import com.lampa.emotionrecognition.classifiers.behaviors.ClassifyBehavior;
 
@@ -28,15 +29,31 @@ public abstract class TFLiteClassifier {
 
     protected ClassifyBehavior classifyBehavior;
 
+    // THIS IS THE CORRECTED CONSTRUCTOR
     public TFLiteClassifier(AssetManager assetManager, String modelFileName, String[] labels) {
         mAssetManager = assetManager;
+        mTFLiteInterpreterOptions = new Interpreter.Options();
 
-        GpuDelegate delegate = new GpuDelegate();
-        mTFLiteInterpreterOptions = new Interpreter.Options().addDelegate(delegate);
+        // --- START: MODERN GPU DELEGATE INITIALIZATION ---
+        try {
+            // Create a new options instance for the GpuDelegate.
+            GpuDelegate.Options delegateOptions = new GpuDelegate.Options();
+            GpuDelegate delegate = new GpuDelegate();
+            mTFLiteInterpreterOptions.addDelegate(delegate);
+            Log.d("TFLiteClassifier", "GPU Delegate created successfully.");
+        } catch (Exception e) {
+            // If the GPU delegate fails, log the error and fall back to using the CPU.
+            // This prevents the app from crashing on unsupported devices.
+            Log.e("TFLiteClassifier", "Failed to create GPU delegate. Using CPU instead.", e);
+            mTFLiteInterpreterOptions.setNumThreads(4); // Optional: improve CPU performance
+        }
+        // --- END: MODERN GPU DELEGATE INITIALIZATION ---
 
+        // Now, initialize the interpreter with the options (which may or may not have the GPU delegate)
         try {
             mInterpreter = new Interpreter(loadModel(modelFileName), mTFLiteInterpreterOptions);
         } catch (Exception ex) {
+            Log.e("TFLiteClassifier", "Failed to initialize interpreter.", ex);
             ex.printStackTrace();
         }
 
@@ -57,7 +74,9 @@ public abstract class TFLiteClassifier {
 
     // Close the interpreter to avoid memory leaks
     public void close() {
-        mInterpreter.close();
+        if (mInterpreter != null) {
+            mInterpreter.close();
+        }
     }
 
     public Interpreter getInterpreter() {
@@ -69,6 +88,6 @@ public abstract class TFLiteClassifier {
     }
 
     public void setLabels(List<String> labels) {
-        mLabels = labels;
+        mLabels = mLabels;
     }
 }
